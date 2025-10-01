@@ -1,0 +1,102 @@
+version: '3'
+services:
+  web.ttlock:
+    container_name: web.ttlock
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - FASTCGI_PASS_HOST=php
+    volumes:
+      - ~/.composer-docker/cache:/root/.composer/cache:delegated
+      - ./:/app:delegated
+      - ./.composer:/root/.composer/
+    labels:
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:ttlock.docker.localhost
+      - traefik.frontend.entryPoints=http,https
+      - traefik.docker.network=web
+      - traefik.backend=web
+      - traefik.port=80
+    networks:
+      - web
+  
+  ttlock_nginx: 
+    image: nginx:1.16-alpine
+    container_name: ttlock_nginx
+    restart: 'no'
+    links:
+      - ttlockfpm
+    volumes:
+      - './nginx.conf:/etc/nginx/conf.d/default.conf'
+      - './:/var/www/web'
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.port=80
+      - traefik.frontend.rule=Host:ttlock.docker.localhost
+      - traefik.frontend.entryPoints=http,https
+      - traefik.docker.network=web
+      - traefik.backend=ttlock.nginx
+
+  ttlockfpm:
+    container_name: ttlockfpm
+    restart: 'no'
+    build: 
+      context: .
+      dockerfile: Dockerfile.fpm
+    volumes:
+      - ./:/var/www/web
+    labels:
+      - traefik.enable=true
+      - traefik.backend=ttlockfpm
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - web
+      - internal
+    
+  ttlock_db:
+    image: mysql/mysql-server:5.7
+    container_name: ttlock.mysql
+    restart: "no"
+    volumes:
+      - ./:/app
+      - ./datadir:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=example
+      - MYSQL_USER=ttlock_user
+      - MYSQL_PASSWORD=xw3gw5Gzi0YZJu70
+      - MYSQL_DATABASE=ttlock
+      - MYSQL_ROOT_HOST=%
+    networks:
+      - web
+
+  phpmyadmin_ttlock: 
+    image: phpmyadmin:latest
+    container_name: phpmyadmin-ttlock
+    restart: "no"
+    environment:
+      - PMA_HOST=ttlock.mysql
+      - MYSQL_ROOT_PASSWORD=example
+      - PMA_USER=ttlock_user
+      - PMA_PASSWORD=xw3gw5Gzi0YZJu70
+    networks:
+      - web
+    ports:
+      - 8089:80
+    labels:
+      - traefik.enable=true
+      - traefik.port=80
+      - traefik.frontend.rule=Host:phpmyttlock.docker.localhost
+      - traefik.frontend.entryPoints=http,https
+      - traefik.docker.network=web
+      - traefik.backend=phpmyttlock.docker.localhost
+
+    
+networks:
+    internal:
+      external: false
+    web:
+      external: false

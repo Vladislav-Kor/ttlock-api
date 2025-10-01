@@ -1,0 +1,14 @@
+FROM php:7.4-fpm-alpine
+LABEL maintainer="hexman84 <hexman@live.ru>"
+# RUN apk update && apk add --no-cache \
+#         libmcrypt-dev libpng-dev \
+#         libjpeg-turbo  libjpeg-turbo-dev libxml2-dev \
+#         && docker-php-ext-install -j$(nproc) gd mysqli bcmath pdo pdo_mysql soap
+RUN apk add --update --virtual build_deps bash gcc g++ autoconf make openssl-dev pcre-dev
+RUN pecl update-channels pecl.php.net
+# RUN pecl install mcrypt-1.0.3 && docker-php-ext-enable mcrypt
+# RUN pecl install xdebug-2.9.8 \
+#         && docker-php-ext-enable xdebug
+RUN apk del build_deps
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+
